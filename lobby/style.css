@@ -1,0 +1,134 @@
+* {
+    user-select: none;
+    -webkit-user-drag: none;
+}
+
+#main {
+    display: flex;
+    flex-direction: flex-start;
+
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+
+    background-color: #646464;
+}
+
+#left-bar {
+    background-color: #aeaeae;
+    width: 420px;
+
+    display: flex;
+    flex-direction: column;
+}
+
+.user-div {
+    background-color: #1a1a1a;
+    height: 81px;
+    border-bottom: 3.5px white solid;
+
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+}
+
+.user-icon {
+    margin-left: 7.5px;
+
+    background-color: #646464;
+    width: 64px;
+    height: 64px;
+    border-radius: 32px;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.user-icon > img {
+    width: 48px;
+    height: 48px;
+}
+
+.user-data-div {
+    margin-left: 7.5px;
+
+    font-size: 17px;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+.user-name {
+    color: white;
+}
+.user-role {
+    color: red;
+}
+
+#content {
+    background-color: #959595;
+    width: 1500px;
+    height: 1080px;
+
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    flex-direction: column;
+
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+#card-group {
+    background-color: #858585;
+    height: 850px;
+    width: 1200px;
+    border-radius: 100px;
+
+    display: grid;
+    column-gap: 3px;
+
+    grid-template-columns: auto auto auto;
+    justify-content: center;
+    align-items: center;
+}
+
+#start-button {
+    background-color: #646464;
+    color: white;
+    width: 251.5px;
+    height: 53px;
+    border-radius: 21.5px;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-size: 35px;
+}
+.card {
+    background-color: white;
+    width: 297px;
+    height: 421px;
+
+    border-radius: 25px;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-size: 35px;
+    font-weight: bold;
+}
+
+/* <div id="main">
+<div id="left-bar"></div>
+<div id="content">
+    <div id="card-group">
+        <div class="card" alt="animals">Animals</div>
+    </div>
+    <div id="start-button">START</div>
+</div>
+</div> */

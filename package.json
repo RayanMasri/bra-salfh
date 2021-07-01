@@ -1,0 +1,12 @@
+{
+    "name": "whiteboard",
+    "version": "0.0.1",
+    "dependencies": {
+        "express": "*",
+        "serve-favicon": "^2.5.0",
+        "socket.io": "*"
+    },
+    "scripts": {
+        "start": "node app.js"
+    }
+}
