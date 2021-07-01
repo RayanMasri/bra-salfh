@@ -7,24 +7,15 @@
     </head>
     <body>
         <div id="main">
-            <div id="icon">
-                <div id="icon-container">
-                    <img width="96" height="96" />
-                </div>
-                <div id="reload">
-                    <img src="./main/reload.png" width="16" height="16" />
-                </div>
-            </div>
-
-            <input id="name-field" type="text" />
+            <input class="name-field field" type="text" />
+            <input class="data-field field" type="text" />
             <div class="buttons">
-                <div class="join-room button">ادخل غرفة</div>
-                <div class="create-room button">إنشاء غرفة</div>
+                <div class="join button">ادخل غرفة</div>
+                <div class="create button">إنشاء غرفة</div>
             </div>
         </div>
 
         <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.3.1/socket.io.js"></script>
-        <script src="./main/user.js"></script>
         <script src="./main/script.js"></script>
     </body>
 </html>

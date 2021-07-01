@@ -4,27 +4,13 @@ const http = require('http').createServer(app);
 const io = require('socket.io')(http);
 const path = require('path');
 
-app.use('/join', express.static(path.join(__dirname, '/join')));
-app.use('/create', express.static(path.join(__dirname, '/create')));
 app.use('/lobby', express.static(path.join(__dirname, '/lobby')));
 app.use('/main', express.static(path.join(__dirname, '/main')));
 app.use('/game', express.static(path.join(__dirname, '/game')));
 
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, '/index.html'));
-});
-app.get('/join', (req, res) => {
-    res.sendFile(path.join(__dirname, '/join.html'));
-});
-app.get('/create', (req, res) => {
-    res.sendFile(path.join(__dirname, '/create.html'));
-});
-app.get('/lobby', (req, res) => {
-    res.sendFile(path.join(__dirname, '/lobby.html'));
-});
-app.get('/game', (req, res) => {
-    res.sendFile(path.join(__dirname, '/game.html'));
-});
+app.get('/', (req, res) => res.sendFile(__dirname + '/index.html'));
+app.get('/lobby', (req, res) => res.sendFile(__dirname + '/lobby.html'));
+app.get('/game', (req, res) => res.sendFile(__dirname + '/game.html'));
 
 function getRandomArbitrary(min, max) {
     return Math.floor(Math.random() * (max - min) + min);
@@ -34,171 +20,241 @@ let rooms = [];
 let words = {
     animals: ['كوالا', 'خروف', 'ثعلب', 'فيل', 'جمل', 'دب قطبي', 'بقره', 'دب'],
     clothes: ['سلسال', 'تنوره', 'حلق', 'غترة', 'ثوب', 'كعب', 'عباية'],
+    anime: ['ون بيس', 'بليتش', 'هجوم العمالقة', 'مذكرة الموت', 'توكيو رفنجرز'],
 };
-io.on('connection', (socket) => {
-    // game
-    socket.on('game vote submit', (id) => {
-        let index = rooms.findIndex((room) =>
-            room.users.find((user) => user.id == id)
-        );
-        if (index < 0) return;
 
-        let userIndex = rooms[index].users.findIndex((user) => user.id == id);
-        if (userIndex < 0) return;
-
-        rooms[index].users[userIndex].submit = true;
-        if (rooms[index].users.every((e) => e.submit)) {
-            console.log('All submit');
-
-            rooms[index].users.map((e) => {
-                io.to(e.socket).emit('game end', rooms[index].users);
-            });
-            rooms.splice(index, 1);
+const getIndicesByProp = (m, p) => {
+    return new Promise((resolve, reject) => {
+        let room_index, user_index;
+        try {
+            room_index = rooms.findIndex((x) => x.users.find((y) => y[p] == m));
+            user_index = rooms[room_index].users.findIndex((x) => x[p] == m);
+        } catch (err) {
+            // reject(
+            //     `Error: \u001b[1;31m${err}\u001b[0m\n    Match: ${m}\n    Property: ${p}`
+            // );
         }
+
+        resolve({
+            room: room_index,
+            user: user_index,
+        });
+    });
+};
+
+io.on('connection', (socket) => {
+    socket.on('disconnect', () => {
+        // error occurs because either the user left a destroyed room or the user socket disconnected from main
+        getIndicesByProp(socket.id, 'socket')
+            .then((index) => {
+                if (rooms[index.room] == undefined) return;
+                if (!rooms[index.room].started) {
+                    if (
+                        rooms[index.room].users[index.user].id ==
+                        rooms[index.room].owner
+                    ) {
+                        console.log(`user is owner destroy room`);
+                        rooms[index.room].users.map((e) =>
+                            io.to(e.socket).emit('room destroy')
+                        );
+                        rooms.splice(index.room, 1);
+                    } else {
+                        console.log(`user is member leave room`);
+                        rooms[index.room].users.splice(index.user, 1);
+                        rooms[index.room].users.map((user) => {
+                            io.to(user.socket).emit(
+                                'room info',
+                                rooms[index.room]
+                            );
+                        });
+                    }
+                } else {
+                    if (rooms[index.room].users.every((x) => x.loaded)) {
+                        console.log(
+                            `user left during game and all loaded destroy room`
+                        );
+                        rooms[index.room].users.map((e) =>
+                            io.to(e.socket).emit('room destroy')
+                        );
+                        rooms.splice(index.room, 1);
+                    }
+                }
+            })
+            .catch(console.log);
     });
 
-    socket.on('game vote player', (vote, last_voted) => {
-        let index = rooms.findIndex((room) =>
-            room.users.find((user) => user.id == vote)
-        );
-        if (index < 0) return;
+    socket.on('game vote submit', (id) => {
+        getIndicesByProp(id, 'id')
+            .then((index) => {
+                rooms[index.room].users[index.user].submit = true;
+                if (rooms[index.room].users.every((x) => x.submit)) {
+                    console.log('All votes have been submitted');
+                    rooms[index.room].users.map((e) => {
+                        io.to(e.socket).emit(
+                            'game end',
+                            rooms[index.room].users
+                        );
+                    });
+                    rooms.splice(index, 1);
+                }
+            })
+            .catch(console.log);
+    });
 
-        let vote_i = rooms[index].users.findIndex((e) => e.id == vote);
-        rooms[index].users[vote_i].voted += 1;
+    socket.on('game vote player', (vote, prev_vote, id) => {
+        getIndicesByProp(vote, 'id')
+            .then((index) => {
+                rooms[index.room].users[index.user].voted = rooms[
+                    index.room
+                ].users[index.user].voted.concat([id]);
 
-        if (last_voted != null) {
-            let last_voted_i = rooms[index].users.findIndex(
-                (e) => e.id == last_voted
-            );
-            rooms[index].users[last_voted_i].voted -= 1;
-        }
+                if (prev_vote != null) {
+                    rooms[index.room].users[
+                        rooms[index.room].users.findIndex(
+                            (x) => x.id == prev_vote
+                        )
+                    ].voted.splice(
+                        rooms[index.room].users[
+                            rooms[index.room].users.findIndex(
+                                (x) => x.id == prev_vote
+                            )
+                        ].voted.findIndex((x) => x == id),
+                        1
+                    );
+                }
 
-        rooms[index].users.map((user) => {
-            io.to(user.socket).emit('game vote', rooms[index].users);
-        });
-        ///ASDIAOIDSJOADOJASDJIOAJKODADJKOADJKAAZDJIOADADJIOADJIOASJKOD
+                rooms[index.room].users.map((user) => {
+                    io.to(user.socket).emit(
+                        'game vote',
+                        rooms[index.room].users
+                    );
+                });
+            })
+            .catch(console.log);
     });
 
     socket.on('game vote', (id) => {
-        let index = rooms.findIndex((room) =>
-            room.users.find((user) => user.id == id)
-        );
-        if (index < 0) return;
-
-        rooms[index].voting = true;
-        rooms[index].users.map((user) => {
-            io.to(user.socket).emit('game vote', rooms[index].users);
-        });
+        getIndicesByProp(id, 'id')
+            .then((index) => {
+                rooms[index.room].voting = true;
+                rooms[index.room].users.map((user) => {
+                    io.to(user.socket).emit(
+                        'game vote',
+                        rooms[index.room].users
+                    );
+                });
+            })
+            .catch(console.log);
     });
 
     socket.on('game player ready', (id) => {
-        let index = rooms.findIndex((room) =>
-            room.users.find((user) => user.id == id)
-        );
-        if (index < 0) return;
-
-        let userIndex = rooms[index].users.findIndex((user) => user.id == id);
-        if (userIndex < 0) return;
-
-        console.log(`${rooms[index].users[userIndex].user.name} is ready`);
-
-        rooms[index].users[userIndex].ready = true;
-
-        rooms[index].users.map((user) => {
-            io.to(user.socket).emit(
-                'game player info',
-                user.conv,
-                rooms[index].users.filter((e) => e.ready).length,
-                rooms[index].users.length,
-                rooms[index].display,
-                rooms[index].word
-            );
-        });
-
-        if (rooms[index].users.every((e) => e.ready)) {
-            console.log('All ready');
-
-            let users = rooms[index].users;
-
-            let user1 = users[getRandomArbitrary(0, users.length - 1)];
-            if (rooms[index].display != null) {
-                let altUsers1 = users.filter(
-                    (user) =>
-                        ![
-                            rooms[index].display.ask.user1.id,
-                            rooms[index].display.ask.user2.id,
-                        ].includes(user.id)
-                );
-
-                user1 = altUsers1[getRandomArbitrary(0, altUsers1.length - 1)];
-            }
-
-            let altUsers = users.filter((user) => user.id != user1.id);
-            let user2 = altUsers[getRandomArbitrary(0, altUsers.length - 1)]; // dont be user1
-            if (rooms[index].display != null) {
-                altUsers = users.filter(
-                    (user) =>
-                        ![rooms[index].display.ask.user2.id, user1.id].includes(
-                            user.id
-                        )
-                );
-
-                user2 = altUsers[getRandomArbitrary(0, altUsers.length - 1)];
-            }
-
-            rooms[index].display = {
-                ask: {
-                    user1: user1,
-                    user2: user2,
-                },
-            };
-
-            rooms[index].asked += 1;
-
-            if (rooms[index].asked > 3) {
-                rooms[index].users.map((user) => {
-                    io.to(user.socket).emit('game show vote');
+        getIndicesByProp(id, 'id')
+            .then((index) => {
+                rooms[index.room].users[index.user].ready = true;
+                rooms[index.room].users.map((user) => {
+                    io.to(user.socket).emit(
+                        'game player info',
+                        user.conv,
+                        rooms[index.room]
+                    );
                 });
-            }
 
-            rooms[index].users = rooms[index].users.map((e) => {
-                e.ready = false;
-                io.to(e.socket).emit('game display', rooms[index].display);
-                return e;
-            });
-        }
+                if (rooms[index.room].users.every((e) => e.ready)) {
+                    console.log('All users are ready for the next question');
+
+                    let users = rooms[index.room].users;
+
+                    let user1 = users[getRandomArbitrary(0, users.length - 1)];
+                    if (rooms[index.room].display != null) {
+                        let altUsers1 = users.filter(
+                            (user) =>
+                                ![
+                                    rooms[index.room].display.ask.user1.id,
+                                    rooms[index.room].display.ask.user2.id,
+                                ].includes(user.id)
+                        );
+
+                        user1 =
+                            altUsers1[
+                                getRandomArbitrary(0, altUsers1.length - 1)
+                            ];
+                    }
+
+                    let altUsers = users.filter((user) => user.id != user1.id);
+                    let user2 =
+                        altUsers[getRandomArbitrary(0, altUsers.length - 1)]; // dont be user1
+                    if (rooms[index.room].display != null) {
+                        altUsers = users.filter(
+                            (user) =>
+                                ![
+                                    rooms[index.room].display.ask.user2.id,
+                                    user1.id,
+                                ].includes(user.id)
+                        );
+
+                        user2 =
+                            altUsers[
+                                getRandomArbitrary(0, altUsers.length - 1)
+                            ];
+                    }
+
+                    rooms[index.room].asked += 1;
+                    rooms[index.room].display = {
+                        ask: {
+                            user1: user1,
+                            user2: user2,
+                        },
+                    };
+
+                    if (
+                        rooms[index.room].asked >
+                        rooms[index.room].users.length - 1
+                    ) {
+                        rooms[index.room].users.map((user) => {
+                            io.to(user.socket).emit('game show vote');
+                        });
+                    }
+
+                    rooms[index.room].users = rooms[index.room].users.map(
+                        (x) => {
+                            x.ready = false;
+                            io.to(x.socket).emit(
+                                'game display',
+                                rooms[index.room].display
+                            );
+                            return x;
+                        }
+                    );
+                }
+            })
+            .catch(console.log);
     });
 
     socket.on('game ready load', (id) => {
-        let index = rooms.findIndex((room) =>
-            room.users.find((user) => user.id == id)
-        );
-        if (index < 0) return;
+        getIndicesByProp(id, 'id')
+            .then((index) => {
+                rooms[index.room].users[index.user].socket = socket.id;
+                rooms[index.room].users[index.user].loaded = true;
+                if (rooms[index.room].users.every((x) => x.loaded)) {
+                    console.log('All users have loaded');
 
-        let userIndex = rooms[index].users.findIndex((user) => user.id == id);
-        if (userIndex < 0) return;
+                    rooms[index.room].users[
+                        getRandomArbitrary(
+                            0,
+                            rooms[index.room].users.length - 1
+                        )
+                    ].conv = false;
 
-        console.log(`${rooms[index].users[userIndex].user.name} has loaded`);
-
-        rooms[index].users[userIndex].socket = socket.id;
-        rooms[index].users[userIndex].loaded = true;
-        if (rooms[index].users.every((e) => e.loaded)) {
-            rooms[index].users[
-                getRandomArbitrary(0, rooms[index].users.length - 1)
-            ].conv = false;
-
-            console.log('All loaded');
-            rooms[index].users.map((user) => {
-                io.to(user.socket).emit(
-                    'game player info',
-                    user.conv,
-                    0,
-                    rooms[index].users.length,
-                    null,
-                    rooms[index].word
-                );
-            });
-        }
+                    rooms[index.room].users.map((user) => {
+                        io.to(user.socket).emit(
+                            'game player info',
+                            user.conv,
+                            rooms[index.room]
+                        );
+                    });
+                }
+            })
+            .catch(console.log);
     });
 
     // info
@@ -214,6 +270,8 @@ io.on('connection', (socket) => {
             return;
         }
 
+        rooms[index].started = true;
+
         let chosenWords = words[rooms[index].mode];
         rooms[index].word =
             chosenWords[getRandomArbitrary(0, chosenWords.length - 1)];
@@ -226,8 +284,9 @@ io.on('connection', (socket) => {
         let index = rooms.findIndex((room) => room.owner == data.id);
         if (index < 0) return;
 
-        rooms[index].mode = data.mode;
+        console.log(index);
 
+        rooms[index].mode = data.mode;
         rooms[index].users.map((user) => {
             if (user.id != data.id) {
                 io.to(user.socket).emit('room mode change', data.mode);
@@ -236,25 +295,19 @@ io.on('connection', (socket) => {
     });
 
     socket.on('room info', (id) => {
-        if (rooms.length < 1) return;
-        let index = rooms.findIndex((room) =>
-            room.users.find((user) => user.id == id)
-        );
-        if (index < 0) return;
-
-        let userIndex = rooms[index].users.findIndex((user) => user.id == id);
-        if (userIndex < 0) return;
-
-        rooms[index].users[userIndex].socket = socket.id;
-
-        rooms[index].users.map((user) => {
-            io.to(user.socket).emit('room info', rooms[index]);
-        });
+        getIndicesByProp(id, 'id')
+            .then((index) => {
+                rooms[index.room].users[index.user].socket = socket.id;
+                rooms[index.room].users.map((user) => {
+                    io.to(user.socket).emit('room info', rooms[index.room]);
+                });
+            })
+            .catch(console.log);
     });
 
     // room creation and joining
     socket.on('join room', (data) => {
-        let index = rooms.findIndex((e) => e.id == data.room);
+        let index = rooms.findIndex((x) => x.id == data.room);
 
         if (index != -1) {
             rooms[index].users = rooms[index].users.concat([
@@ -266,18 +319,18 @@ io.on('connection', (socket) => {
                     ready: false,
                     conv: true,
                     submit: false,
-                    voted: 0,
+                    voted: [],
                 },
             ]);
-            socket.emit('room joined');
+            socket.emit('room transfer');
         } else {
-            socket.emit('room error', 'Cant find room');
+            socket.emit('room error', 'ما لقيت الغرفة');
         }
     });
 
     socket.on('create room', (data) => {
         if (rooms.find((e) => e.id == data.room) != undefined) {
-            socket.emit('room error');
+            socket.emit('room error', 'الغرفة موجودة');
             return;
         }
 
@@ -293,15 +346,16 @@ io.on('connection', (socket) => {
                     ready: false,
                     conv: true,
                     submit: false,
-                    voted: 0,
+                    voted: [],
                 },
             ],
             mode: 'animals',
             asked: 0,
             word: null,
             display: null,
+            started: false,
         });
-        socket.emit('room created');
+        socket.emit('room transfer');
     });
 });
 
