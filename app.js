@@ -16,11 +16,23 @@ function getRandomArbitrary(min, max) {
     return Math.floor(Math.random() * (max - min) + min);
 }
 
+{
+    /* <div class="card" alt="animals">حيوانات</div>
+<div class="card" alt="clothes">ملابس</div>
+<div class="card" alt="sweets">حلويات</div>
+<div class="card" alt="drinks">مشروبات</div>
+<div class="card" alt="food">أكلات</div>
+<div class="card" alt="anime">أنمي</div> */
+}
+
 let rooms = [];
 let words = {
     animals: ['كوالا', 'خروف', 'ثعلب', 'فيل', 'جمل', 'دب قطبي', 'بقره', 'دب'],
     clothes: ['سلسال', 'تنوره', 'حلق', 'غترة', 'ثوب', 'كعب', 'عباية'],
     anime: ['ون بيس', 'بليتش', 'هجوم العمالقة', 'مذكرة الموت', 'توكيو رفنجرز'],
+    sweets: ['كرمل', 'شوكولاته', 'قمي', 'حلاوة مصاص', 'علك'],
+    drinks: ['مويه', 'حليب', 'قهوه', 'شاي', 'هوت شكلتا', 'عصير', 'مشروب غازيه'],
+    food: ['سمك', 'لحم', 'دجاج', 'خبز', 'جبن', 'خصروات', 'فواكه'],
 };
 
 const getIndicesByProp = (m, p) => {
