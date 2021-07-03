@@ -18,20 +18,35 @@ const create = (template, selector) => {
 socket.on('game end', (users) => {
     document.querySelector('#users').style = 'display: none;';
     console.log(users);
+    let most_voted = users.sort(function (a, b) {
+        return a.voted - b.voted;
+    })[0];
+
+    console.log(users.find((user) => user.conv).id);
+
+    console.log(most_voted);
+    console.log(
+        users.sort(function (a, b) {
+            return a.voted - b.voted;
+        })
+    );
+
     main_text_title.innerHTML = `${
         users.find((user) => !user.conv).user
     } برا السالفة`;
+
     main_text_desc.innerHTML = `${
-        users.sort(function (a, b) {
-            return a.voted + b.voted;
-        })[0].id == users.find((user) => user.conv).id
-            ? 'خسران'
-            : 'فايز'
+        most_voted.id == users.find((user) => !user.conv).id
+            ? ' خسران عشان' +
+              most_voted.voted.length +
+              (most_voted.voted.length == 1 ? 'صوت' : ' صوتوا ') +
+              ' عليه'
+            : `${most_voted.user} فايز عشان اكثر واحد تصوت عليه`
     }`;
 
     setTimeout(function () {
         window.location.href = window.location.origin;
-    }, 5000);
+    }, 1500000);
     // main_text_desc.style = 'display: none;';
     // submit_btn.style = 'display: none;';
 });

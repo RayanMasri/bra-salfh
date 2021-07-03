@@ -13,17 +13,25 @@ let socket = io();
 let data_field = document.querySelector('.data-field');
 let name_field = document.querySelector('.name-field');
 
+data_field.value = '';
+name_field.value = '';
+
 const saveData = () => {
     return new Promise((resolve, reject) => {
-        if (name_field.value == '') {
+        if (name_field.value.trim() == '') {
             run_error('اكتب اسمك', name_field);
             reject();
         } else {
-            sessionStorage.setItem('name', name_field.value);
-            if (sessionStorage.getItem('id') == undefined) {
-                sessionStorage.setItem('id', uuidv4());
+            if (/[\u0621-\u064A]+$/.test(name_field.value.trim())) {
+                sessionStorage.setItem('name', name_field.value.trim());
+                if (sessionStorage.getItem('id') == undefined) {
+                    sessionStorage.setItem('id', uuidv4());
+                }
+                resolve(name_field.value.trim());
+            } else {
+                run_error('حروف عربية بس', name_field);
+                reject();
             }
-            resolve();
         }
     });
 };
@@ -56,28 +64,34 @@ socket.on('room error', (error) => {
 });
 
 document.querySelector('.join').addEventListener('click', () => {
-    saveData().then(() => {
-        if (data_field.value == '') {
-            run_error('اكتب إسم الغرفة', data_field);
-        } else {
-            socket.emit('join room', {
-                room: data_field.value,
-                user: name_field.value,
-                id: sessionStorage.getItem('id'),
-            });
-        }
-    });
+    if (!error_done) return;
+    saveData()
+        .then((name) => {
+            if (data_field.value.trim() == '') {
+                run_error('اكتب إسم الغرفة', data_field);
+            } else {
+                socket.emit('join room', {
+                    room: data_field.value.trim(),
+                    user: name,
+                    id: sessionStorage.getItem('id'),
+                });
+            }
+        })
+        .catch(() => {});
 });
 document.querySelector('.create').addEventListener('click', () => {
-    saveData().then(() => {
-        if (data_field.value == '') {
-            run_error('اكتب إسم الغرفة', data_field);
-        } else {
-            socket.emit('create room', {
-                room: data_field.value,
-                user: name_field.value,
-                id: sessionStorage.getItem('id'),
-            });
-        }
-    });
+    if (!error_done) return;
+    saveData()
+        .then(() => {
+            if (data_field.value == '') {
+                run_error('اكتب إسم الغرفة', data_field);
+            } else {
+                socket.emit('create room', {
+                    room: data_field.value,
+                    user: name_field.value,
+                    id: sessionStorage.getItem('id'),
+                });
+            }
+        })
+        .catch(() => {});
 });
