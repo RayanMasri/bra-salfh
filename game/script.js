@@ -17,8 +17,9 @@ const create = (template, selector) => {
 
 socket.on('game end', (users) => {
     document.querySelector('#users').style = 'display: none;';
+    console.log(users);
     main_text_title.innerHTML = `${
-        users.find((user) => user.conv).user
+        users.find((user) => !user.conv).user
     } برا السالفة`;
     main_text_desc.innerHTML = `${
         users.sort(function (a, b) {
