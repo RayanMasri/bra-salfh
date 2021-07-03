@@ -36,17 +36,12 @@ socket.on('game end', (users) => {
     } برا السالفة`;
 
     main_text_desc.innerHTML = `${
-        most_voted.id == users.find((user) => !user.conv).id
-            ? ' خسران عشان' +
-              most_voted.voted.length +
-              (most_voted.voted.length == 1 ? 'صوت' : ' صوتوا ') +
-              ' عليه'
-            : `${most_voted.user} فايز عشان اكثر واحد تصوت عليه`
+        most_voted.id == users.find((user) => !user.conv).id ? 'خسران' : `فايز`
     }`;
 
     setTimeout(function () {
         window.location.href = window.location.origin;
-    }, 1500000);
+    }, 5000);
     // main_text_desc.style = 'display: none;';
     // submit_btn.style = 'display: none;';
 });
