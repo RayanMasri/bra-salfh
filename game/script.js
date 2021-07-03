@@ -28,6 +28,10 @@ socket.on('game end', (users) => {
             ? 'خسران'
             : 'فايز'
     }`;
+
+    setTimeout(function () {
+        window.location.href = window.location.origin;
+    }, 5000);
     // main_text_desc.style = 'display: none;';
     // submit_btn.style = 'display: none;';
 });
